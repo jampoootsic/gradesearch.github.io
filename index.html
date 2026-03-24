@@ -257,9 +257,12 @@
                 <div id="preview-area" style="display: none;">
                     <h3 style="margin: 30px 0 15px;">✅ Preview</h3>
                     <div class="table-container" id="preview-table"></div>
-                    <div style="margin-top: 20px; text-align: center;">
+                    <div style="margin-top: 20px; text-align: center; display: flex; justify-content: center; gap: 20px;">
                         <button onclick="saveToLocalStorage()" style="padding: 14px 40px; font-size: 18px;">
                             💾 Save Grades for Students
+                        </button>
+                        <button onclick="clearAllGrades()" style="padding: 14px 40px; font-size: 18px; background: #f44336; color: white;">
+                            🗑️ Clear All Grades
                         </button>
                     </div>
                 </div>
@@ -277,7 +280,21 @@
 
         function loadSavedData() {
             const saved = localStorage.getItem('gradesData');
-            if (saved) gradesData = JSON.parse(saved);
+            if (saved) {
+                gradesData = JSON.parse(saved);
+            } else {
+                gradesData = [];
+            }
+        }
+
+        function clearAllGrades() {
+            if (confirm('Are you sure you want to clear all uploaded grades? This cannot be undone.')) {
+                localStorage.removeItem('gradesData');
+                gradesData = [];
+                document.getElementById('preview-table').innerHTML = '';
+                document.getElementById('upload-status').innerHTML = `<div class="status" style="background:#f8d7da;color:#721c24;">🗑️ All grades have been cleared.</div>`;
+                document.getElementById('preview-area').style.display = 'none';
+            }
         }
 
         function switchTab(tabIndex) {
