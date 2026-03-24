@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GradeSearch - Student Grade Finder</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap');
+        
+        :root {
+            --primary: #0066cc;
+        }
+        
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body {
+            font-family: 'Poppins', sans-serif;
+            background: linear-gradient(135deg, #f0f4f8, #e6f0ff);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1100px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: var(--primary);
+            color: white;
+            padding: 20px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .header h1 {
+            font-size: 28px;
+            font-weight: 600;
+        }
+        
+        .tabs {
+            display: flex;
+            border-bottom: 1px solid #ddd;
+        }
+        
+        .tab {
+            padding: 15px 30px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.3s;
+        }
+        
+        .tab.active {
+            background: white;
+            border-bottom: 4px solid var(--primary);
+            color: var(--primary);
+        }
+        
+        .content {
+            padding: 30px;
+        }
+        
+        .student-section, .admin-section {
+            display: none;
+        }
+        
+        .student-section.active, .admin-section.active {
+            display: block;
+        }
+        
+        .search-box {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+        }
+        
+        input[type="text"], input[type="password"] {
+            flex: 1;
+            min-width: 280px;
+            padding: 15px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 18px;
+            outline: none;
+        }
+        
+        input[type="text"]:focus, input[type="password"]:focus {
+            border-color: var(--primary);
+        }
+        
+        button {
+            padding: 15px 30px;
+            background: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 500;
+            cursor: pointer;
+        }
+        
+        button:hover {
+            background: #0052a3;
+        }
+        
+        .table-container {
+            overflow-x: auto;
+            border-radius: 12px;
+            border: 1px solid #eee;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        th, td {
+            padding: 16px 20px;
+            text-align: left;
+            border-bottom: 1px solid #eee;
+        }
+        
+        th {
+            background: #f8f9fa;
+            font-weight: 600;
+        }
+        
+        .remark {
+            padding: 10px 16px;
+            border-radius: 8px;
+            font-weight: 500;
+            margin-top: 8px;
+            display: inline-block;
+        }
+        
+        .remark.warning {
+            background: #fff3cd;
+            color: #856404;
+        }
+        
+        .remark.good {
+            background: #d4edda;
+            color: #155724;
+        }
+        
+        .upload-area {
+            border: 3px dashed #0066cc;
+            border-radius: 12px;
+            padding: 60px 40px;
+            text-align: center;
+            background: #f8fbff;
+        }
+        
+        .status {
+            padding: 12px;
+            margin: 15px 0;
+            border-radius: 8px;
+            font-weight: 500;
+        }
+        
+        .footer {
+            text-align: center;
+            padding: 20px;
+            color: #666;
+            font-size: 14px;
+            background: #f8f9fa;
+        }
+        
+        .no-data {
+            text-align: center;
+            padding: 60px 20px;
+            color: #888;
+            font-size: 18px;
+        }
+        
+        .password-screen {
+            text-align: center;
+            padding: 80px 40px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div>
+                <h1>📚 GradeSearch</h1>
+                <p style="opacity: 0.9; font-size: 15px;">Student Grade Finder</p>
+            </div>
+        </div>
+
+        <!-- Tabs -->
+        <div class="tabs">
+            <div class="tab active" id="student-tab" onclick="switchTab(0)">👨‍🎓 Student Search</div>
+            <div class="tab" id="admin-tab" onclick="switchTab(1)">🔐 Admin Upload</div>
+        </div>
+
+        <!-- STUDENT SECTION -->
+        <div class="content student-section active" id="student-content">
+            <h2 style="margin-bottom: 20px; color: #333;">Search Your Midterm Grades</h2>
+            
+            <div class="search-box">
+                <input type="text" id="student-id" placeholder="Enter your Student ID" 
+                       onkeypress="if(event.key === 'Enter') searchGrades()">
+                <button onclick="searchGrades()">🔍 Search Grades</button>
+            </div>
+
+            <div id="result-area"></div>
+        </div>
+
+        <!-- ADMIN PASSWORD SCREEN -->
+        <div class="content admin-section" id="admin-content">
+            <!-- Password Screen -->
+            <div id="password-screen">
+                <div class="password-screen">
+                    <h2>🔐 Admin Access</h2>
+                    <p style="margin: 15px 0 25px; color: #555;">Enter Admin Password to Upload Grades</p>
+                    <input type="password" id="admin-password" placeholder="Enter Password" 
+                           style="width: 320px; text-align: center; font-size: 20px;" 
+                           onkeypress="if(event.key === 'Enter') checkPassword()">
+                    <br><br>
+                    <button onclick="checkPassword()" style="padding: 14px 40px; font-size: 18px;">
+                        Login as Admin
+                    </button>
+                    <div id="password-error" style="color: red; margin-top: 15px; font-weight: 500;"></div>
+                </div>
+            </div>
+
+            <!-- Actual Admin Upload Area (hidden until password is correct) -->
+            <div id="admin-upload-area" style="display: none;">
+                <h2 style="margin-bottom: 20px; color: #333;">Admin: Upload Grades Excel File</h2>
+                
+                <div class="upload-area" id="drop-zone">
+                    <div style="font-size: 48px; margin-bottom: 15px;">📤</div>
+                    <h3>Drop your Excel file here</h3>
+                    <p style="color: #666; margin: 10px 0 20px;">or</p>
+                    <button onclick="document.getElementById('excel-upload').click()" 
+                            style="background: white; color: var(--primary); border: 2px solid var(--primary);">
+                        📎 Choose Excel File (.xlsx)
+                    </button>
+                    <input type="file" id="excel-upload" accept=".xlsx" style="display: none;" 
+                           onchange="handleFileUpload(event)">
+                    <p style="font-size: 13px; color: #888; margin-top: 20px;">
+                        Required columns:<br>
+                        <strong>IDNUMBER | NAME | SUBJECT | NUMBER OF ABSENCES | MIDTERM GRADE</strong>
+                    </p>
+                </div>
+
+                <div id="upload-status"></div>
+                
+                <div id="preview-area" style="display: none;">
+                    <h3 style="margin: 30px 0 15px;">✅ Preview</h3>
+                    <div class="table-container" id="preview-table"></div>
+                    <div style="margin-top: 20px; text-align: center;">
+                        <button onclick="saveToLocalStorage()" style="padding: 14px 40px; font-size: 18px;">
+                            💾 Save Grades for Students
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="footer">
+        GradeSearch • Password Protected Admin • Data saved in browser
+    </div>
+
+    <script>
+        let gradesData = [];
+        const ADMIN_PASSWORD = "147258369";
+
+        function loadSavedData() {
+            const saved = localStorage.getItem('gradesData');
+            if (saved) gradesData = JSON.parse(saved);
+        }
+
+        function switchTab(tabIndex) {
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            
+            if (tabIndex === 0) {
+                document.getElementById('student-tab').classList.add('active');
+                document.getElementById('student-content').classList.add('active');
+                document.getElementById('admin-content').classList.remove('active');
+            } else {
+                document.getElementById('admin-tab').classList.add('active');
+                document.getElementById('admin-content').classList.add('active');
+                document.getElementById('student-content').classList.remove('active');
+            }
+        }
+
+        // Check Admin Password
+        function checkPassword() {
+            const entered = document.getElementById('admin-password').value.trim();
+            const errorDiv = document.getElementById('password-error');
+            
+            if (entered === ADMIN_PASSWORD) {
+                document.getElementById('password-screen').style.display = 'none';
+                document.getElementById('admin-upload-area').style.display = 'block';
+                errorDiv.textContent = '';
+            } else {
+                errorDiv.textContent = '❌ Incorrect Password!';
+                document.getElementById('admin-password').value = '';
+                document.getElementById('admin-password').focus();
+            }
+        }
+
+        // Pagination for student search results
+        let studentCurrentPage = 1;
+        const studentRowsPerPage = 8;
+        function searchGrades(page = 1) {
+            const studentId = document.getElementById('student-id').value.trim();
+            const resultArea = document.getElementById('result-area');
+            studentCurrentPage = page;
+            if (!studentId) {
+                resultArea.innerHTML = `<div class="no-data">⚠️ Please enter your Student ID</div>`;
+                return;
+            }
+            if (gradesData.length === 0) {
+                resultArea.innerHTML = `<div class="no-data">📭 No grades uploaded yet.<br>Ask your teacher to upload the file.</div>`;
+                return;
+            }
+            const filtered = gradesData.filter(row => 
+                String(row.IDNUMBER).trim().toLowerCase() === String(studentId).trim().toLowerCase()
+            );
+            if (filtered.length === 0) {
+                resultArea.innerHTML = `<div class="no-data">😕 No records found for ID <strong>${studentId}</strong></div>`;
+                return;
+            }
+            const start = (page - 1) * studentRowsPerPage;
+            const end = start + studentRowsPerPage;
+            let html = `
+                <h3 style="margin-bottom: 15px;">📋 Your Midterm Grades</h3>
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>IDNUMBER</th>
+                                <th>NAME</th>
+                                <th>SUBJECT</th>
+                                <th>NUMBER OF ABSENCES</th>
+                                <th>MIDTERM GRADE</th>
+                                <th>REMARKS</th>
+                            </tr>
+                        </thead>
+                        <tbody>`;
+            filtered.slice(start, end).forEach(row => {
+                const grade = parseFloat(row['MIDTERM GRADE']) || 0;
+                let remark = grade >= 2.75 ? 
+                    `<div class="remark warning">⚠️ Your midterm grade is ${grade}. Get higher grades in the final exam to be able to get the grades of 3 or even higher.</div>` :
+                    `<div class="remark good">🎉 Great job! Keep up the good work.</div>`;
+                html += `
+                    <tr>
+                        <td><strong>${row.IDNUMBER}</strong></td>
+                        <td>${row.NAME}</td>
+                        <td>${row.SUBJECT}</td>
+                        <td style="text-align:center;">${row['NUMBER OF ABSENCES'] || 0}</td>
+                        <td style="text-align:center; font-weight:600;">${grade}</td>
+                        <td>${remark}</td>
+                    </tr>`;
+            });
+            html += `</tbody></table></div>`;
+            // Pagination controls
+            const totalPages = Math.ceil(filtered.length / studentRowsPerPage);
+            if (totalPages > 1) {
+                html += `<div style="margin: 15px 0; text-align:center;">
+                    <button onclick="searchGrades(1)" ${page === 1 ? 'disabled' : ''}>&laquo; First</button>
+                    <button onclick="searchGrades(${page - 1})" ${page === 1 ? 'disabled' : ''}>Prev</button>
+                    <span style="margin:0 10px;">Page ${page} of ${totalPages}</span>
+                    <button onclick="searchGrades(${page + 1})" ${page === totalPages ? 'disabled' : ''}>Next</button>
+                    <button onclick="searchGrades(${totalPages})" ${page === totalPages ? 'disabled' : ''}>Last &raquo;</button>
+                </div>`;
+            }
+            resultArea.innerHTML = html;
+        }
+
+        function handleFileUpload(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const statusDiv = document.getElementById('upload-status');
+            statusDiv.innerHTML = `<div class="status" style="background:#d4edda;color:#155724;">📤 Reading file...</div>`;
+
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                try {
+                    const data = new Uint8Array(event.target.result);
+                    const workbook = XLSX.read(data, { type: 'array' });
+                    const sheet = workbook.Sheets[workbook.SheetNames[0]];
+                    gradesData = XLSX.utils.sheet_to_json(sheet);
+
+                    document.getElementById('preview-area').style.display = 'block';
+                    showPreview(gradesData);
+
+                    statusDiv.innerHTML = `<div class="status" style="background:#d4edda;color:#155724;">✅ Loaded ${gradesData.length} records successfully!</div>`;
+                } catch (err) {
+                    statusDiv.innerHTML = `<div class="status" style="background:#f8d7da;color:#721c24;">❌ Error reading Excel file.</div>`;
+                }
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        // Pagination for preview table
+        let previewCurrentPage = 1;
+        const previewRowsPerPage = 8;
+        function showPreview(data, page = 1) {
+            previewCurrentPage = page;
+            const start = (page - 1) * previewRowsPerPage;
+            const end = start + previewRowsPerPage;
+            let html = `<table><thead><tr><th>IDNUMBER</th><th>NAME</th><th>SUBJECT</th><th>NUMBER OF ABSENCES</th><th>MIDTERM GRADE</th></tr></thead><tbody>`;
+            data.slice(start, end).forEach(row => {
+                html += `<tr>
+                    <td>${row.IDNUMBER || ''}</td>
+                    <td>${row.NAME || ''}</td>
+                    <td>${row.SUBJECT || ''}</td>
+                    <td style="text-align:center;">${row['NUMBER OF ABSENCES'] || 0}</td>
+                    <td style="text-align:center;">${row['MIDTERM GRADE'] || ''}</td>
+                </tr>`;
+            });
+            html += `</tbody></table>`;
+            // Pagination controls
+            const totalPages = Math.ceil(data.length / previewRowsPerPage);
+            if (totalPages > 1) {
+                html += `<div style="margin: 15px 0; text-align:center;">
+                    <button onclick="showPreview(gradesData, 1)" ${page === 1 ? 'disabled' : ''}>&laquo; First</button>
+                    <button onclick="showPreview(gradesData, ${page - 1})" ${page === 1 ? 'disabled' : ''}>Prev</button>
+                    <span style="margin:0 10px;">Page ${page} of ${totalPages}</span>
+                    <button onclick="showPreview(gradesData, ${page + 1})" ${page === totalPages ? 'disabled' : ''}>Next</button>
+                    <button onclick="showPreview(gradesData, ${totalPages})" ${page === totalPages ? 'disabled' : ''}>Last &raquo;</button>
+                </div>`;
+            }
+            document.getElementById('preview-table').innerHTML = html;
+        }
+
+        function saveToLocalStorage() {
+            localStorage.setItem('gradesData', JSON.stringify(gradesData));
+            document.getElementById('upload-status').innerHTML += `
+                <div class="status" style="background:#0066cc;color:white;margin-top:15px;">
+                    🎉 Grades saved successfully!<br>Students can now search their grades.
+                </div>`;
+            
+            setTimeout(() => switchTab(0), 2000);
+        }
+
+        // Drag & Drop
+        function setupDragDrop() {
+            const dropZone = document.getElementById('drop-zone');
+            dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.style.background = '#e6f0ff'; });
+            dropZone.addEventListener('dragleave', () => dropZone.style.background = '#f8fbff');
+            dropZone.addEventListener('drop', e => {
+                e.preventDefault();
+                dropZone.style.background = '#f8fbff';
+                const file = e.dataTransfer.files[0];
+                if (file) {
+                    const fakeEvent = { target: { files: [file] } };
+                    handleFileUpload(fakeEvent);
+                }
+            });
+        }
+
+        window.onload = () => {
+            loadSavedData();
+            setupDragDrop();
+        };
+    </script>
+</body>
+</html>
