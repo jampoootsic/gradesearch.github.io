@@ -258,8 +258,8 @@
                     <h3 style="margin: 30px 0 15px;">✅ Preview</h3>
                     <div class="table-container" id="preview-table"></div>
                     <div style="margin-top: 20px; text-align: center; display: flex; justify-content: center; gap: 20px;">
-                        <button onclick="saveToLocalStorage()" style="padding: 14px 40px; font-size: 18px;">
-                            💾 Save Grades for Students
+                        <button onclick="downloadGradesJson()" style="padding: 14px 40px; font-size: 18px;">
+                            💾 Download Updated grades.json
                         </button>
                         <button onclick="clearAllGrades()" style="padding: 14px 40px; font-size: 18px; background: #f44336; color: white;">
                             🗑️ Clear All Grades
@@ -271,28 +271,43 @@
     </div>
 
     <div class="footer">
-        GradeSearch • Password Protected Admin • Data saved in browser
+        GradeSearch • Password Protected Admin • Shared data loaded from grades.json
     </div>
 
     <script>
         let gradesData = [];
         const ADMIN_PASSWORD = "147258369";
 
-        function loadSavedData() {
-            const saved = localStorage.getItem('gradesData');
-            if (saved) {
-                gradesData = JSON.parse(saved);
-            } else {
+        function normalizeRow(row) {
+            return {
+                IDNUMBER: row.IDNUMBER || '',
+                NAME: row.NAME || '',
+                SUBJECT: row.SUBJECT || '',
+                'NUMBER OF ABSENCES': row['NUMBER OF ABSENCES'] ?? row.ABSENCES ?? 0,
+                'MIDTERM GRADE': row['MIDTERM GRADE'] ?? ''
+            };
+        }
+
+        async function loadGradesFromJson() {
+            try {
+                const response = await fetch(`grades.json?v=${Date.now()}`, { cache: 'no-store' });
+                if (!response.ok) throw new Error('Could not load grades.json');
+                const data = await response.json();
+                gradesData = Array.isArray(data) ? data.map(normalizeRow) : [];
+            } catch (err) {
                 gradesData = [];
+                const resultArea = document.getElementById('result-area');
+                if (resultArea) {
+                    resultArea.innerHTML = `<div class="no-data">⚠️ Could not load grades.json.<br>Make sure it is uploaded with your site.</div>`;
+                }
             }
         }
 
         function clearAllGrades() {
             if (confirm('Are you sure you want to clear all uploaded grades? This cannot be undone.')) {
-                localStorage.removeItem('gradesData');
                 gradesData = [];
                 document.getElementById('preview-table').innerHTML = '';
-                document.getElementById('upload-status').innerHTML = `<div class="status" style="background:#f8d7da;color:#721c24;">🗑️ All grades have been cleared.</div>`;
+                document.getElementById('upload-status').innerHTML = `<div class="status" style="background:#f8d7da;color:#721c24;">🗑️ Preview cleared. Download the file and upload it as grades.json to apply changes online.</div>`;
                 document.getElementById('preview-area').style.display = 'none';
             }
         }
@@ -409,7 +424,8 @@
                     const data = new Uint8Array(event.target.result);
                     const workbook = XLSX.read(data, { type: 'array' });
                     const sheet = workbook.Sheets[workbook.SheetNames[0]];
-                    gradesData = XLSX.utils.sheet_to_json(sheet);
+                    const rows = XLSX.utils.sheet_to_json(sheet);
+                    gradesData = rows.map(normalizeRow);
 
                     document.getElementById('preview-area').style.display = 'block';
                     showPreview(gradesData);
@@ -454,13 +470,22 @@
             document.getElementById('preview-table').innerHTML = html;
         }
 
-        function saveToLocalStorage() {
-            localStorage.setItem('gradesData', JSON.stringify(gradesData));
+        function downloadGradesJson() {
+            const blob = new Blob([JSON.stringify(gradesData, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'grades.json';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+
             document.getElementById('upload-status').innerHTML += `
                 <div class="status" style="background:#0066cc;color:white;margin-top:15px;">
-                    🎉 Grades saved successfully!<br>Students can now search their grades.
+                    🎉 Downloaded grades.json successfully!<br>Upload this file to your hosting so students can see updates online.
                 </div>`;
-            
+
             setTimeout(() => switchTab(0), 2000);
         }
 
@@ -480,8 +505,8 @@
             });
         }
 
-        window.onload = () => {
-            loadSavedData();
+        window.onload = async () => {
+            await loadGradesFromJson();
             setupDragDrop();
         };
     </script>
