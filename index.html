@@ -393,6 +393,7 @@
                     const workbook = XLSX.read(data, { type: 'array' });
                     const sheet = workbook.Sheets[workbook.SheetNames[0]];
                     gradesData = XLSX.utils.sheet_to_json(sheet);
+                    localStorage.setItem('gradesData', JSON.stringify(gradesData));
 
                     document.getElementById('preview-area').style.display = 'block';
                     showPreview(gradesData);
